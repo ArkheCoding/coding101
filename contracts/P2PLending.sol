@@ -2,10 +2,9 @@
 
 pragma solidity 0.8.19;
 
-import "./interfaces/IERC20.sol";
-import "./access/Ownable.sol";
+import "./core/TokenImplementer.sol";
 
-contract P2PLending is Ownable {
+contract P2PLending is TokenImplementer {
 
   struct Depositor {
     uint256 amount;
@@ -15,18 +14,15 @@ contract P2PLending is Ownable {
     uint256 maxPerAddress;
   }
 
+  struct Borrower {
+    uint256 collateralAmount;
+    uint256 loanAmount;
+    address belongsTo;
+    uint256 availableCollateral;
+  }
+
   // Array of depositors
   Depositor[] public depositors;
-
-  // Address of the token that is allowed to be deposited
-  address public allowedToken;
-
-  // Minimum amount of tokens that can be deposited
-  uint256 public minimumAllowedDeposit;
-
-  function setAllowedToken(address _tokenAddress) public onlyOwner {
-    allowedToken = _tokenAddress;
-  }
 
   /**
    * @dev Function to deposit tokens into the contract
@@ -42,13 +38,10 @@ contract P2PLending is Ownable {
   ) public {
 
     // Check if the amount is greater than the minimum allowed
-    require(_amount >= minimumAllowedDeposit, "Amount is too low");
+    require(_amount >= getMinimumAllowedDeposit(), "Amount is too low");
 
-    // Define the token interface
-    IERC20 token = IERC20(allowedToken);
-
-    // Transfer tokens from the sender to the contract
-    require(token.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
+    // Withdraw the tokens from the user
+    getTokensFromUser(msg.sender, _amount);
 
     // Create a new depositor
     Depositor memory newDepositor = Depositor({
@@ -61,7 +54,6 @@ contract P2PLending is Ownable {
 
     // Add the depositor to the array
     depositors.push(newDepositor);
-
   }
 
 }
