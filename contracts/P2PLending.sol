@@ -3,8 +3,9 @@
 pragma solidity 0.8.19;
 
 import "./core/TokenImplementer.sol";
+import "./core/Calculator.sol";
 
-contract P2PLending is TokenImplementer {
+contract P2PLending is TokenImplementer, Calculator {
 
   struct Depositor {
     uint256 amount;
@@ -68,7 +69,43 @@ contract P2PLending is TokenImplementer {
     uint256 _index, 
     uint256 _loanAmount
     ) internal view returns (uint256) {
-      return (creditOptions[_depositor][_index].collateralRate * _loanAmount) / DECIMAL;
+      return (calcCollateralAmount(
+        _loanAmount, 
+        creditOptions[_depositor][_index].collateralRate
+      ));
+  }
+
+  function repay(
+    uint256 _index,
+    uint256 _amount
+  ) public onlyBorrower {
+    require(credits[msg.sender][_index].isActive, "Credit is not active");
+
+    uint256 leftAmount = credits[msg.sender][_index].amount - 
+                          credits[msg.sender][_index].repaidAmount;
+
+    uint256 timeDifference = block.timestamp - credits[msg.sender][_index].startedAt;
+    uint256 interestRatePerSecond = calcInterestRatePerSecond(credits[msg.sender][_index].interestRate);
+    uint256 interest = calcInterest(leftAmount, interestRatePerSecond, timeDifference);
+
+    uint256 totalDebt = leftAmount + interest;
+
+    require(_amount <= totalDebt, "Amount is too high");
+    require(_amount > interest, "Amount is too low");
+
+    // Claim repayment tokens from msg.sender
+    getTokensFromUser(msg.sender, _amount);
+
+    uint256 amountAfterInterest = _amount - interest;
+
+    // Update borrower balances
+    borrowers[msg.sender].loanRepaid += amountAfterInterest;
+
+    // Update credit balances
+    credits[msg.sender][_index].repaidAmount += amountAfterInterest;
+
+    depositors[credits[msg.sender][_index].depositor].availableAmount += _amount;
+    depositors[credits[msg.sender][_index].depositor].amount += interest;
   }
 
   function borrowMoney(
@@ -105,8 +142,6 @@ contract P2PLending is TokenImplementer {
       "Duration is too high"
     );
 
-    // Krediyi artık kullanidiriyoruz
-
     // Update depositor balances
     depositors[_depositor].availableAmount -= _amount;
 
@@ -130,7 +165,6 @@ contract P2PLending is TokenImplementer {
     transferTokensToUser(msg.sender, _amount);
     
   }
-
 
   /**
    * @dev Function to deposit tokens into the contract
