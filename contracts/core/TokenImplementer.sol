@@ -25,6 +25,10 @@ contract TokenImplementer is Settings {
     require(token.transferFrom(from, address(this), amount), "Transfer failed");
   }
 
+  function transferTokensToUser(address to, uint256 amount) internal {
+    require(token.transfer(to, amount), "Transfer failed");
+  }
+
   function setCollateralToken(address _collateralToken) public onlyOwner {
     collateralToken = _collateralToken;
     collateral = IERC20(collateralToken);

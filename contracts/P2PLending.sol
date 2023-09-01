@@ -105,7 +105,16 @@ contract P2PLending is TokenImplementer {
       "Duration is too high"
     );
 
+    // Krediyi artık kullanidiriyoruz
 
+    // Update depositor balances
+    depositors[_depositor].availableAmount -= _amount;
+
+    // Update borrower balances
+    borrowers[msg.sender].availableCollateralAmount -= requiredCollateral;
+    borrowers[msg.sender].loanAmount += _amount;
+
+    // Add New Credit
     credits[msg.sender].push(Credit(
       _amount,
       0,
@@ -116,6 +125,9 @@ contract P2PLending is TokenImplementer {
       _depositor,
       true
     ));
+
+    // Transfer the tokens to the borrower
+    transferTokensToUser(msg.sender, _amount);
     
   }
 
