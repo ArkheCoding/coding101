@@ -11,6 +11,8 @@ contract Settings is Ownable {
   mapping (address => uint256) private minimumAllowedDeposits;
   uint256 private exchangeRate;
 
+  uint256 public DECIMAL = 10 ** 18;
+
   // Set the minimum allowed deposit for a specific address
   function adjustSpecificAddress(address _address, uint256 _minimumAllowedDeposit) public onlyOwner {
     minimumAllowedDeposits[_address] = _minimumAllowedDeposit;

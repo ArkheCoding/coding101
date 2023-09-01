@@ -1,10 +1,6 @@
-// Sources flattened with hardhat v2.17.2 https://hardhat.org
-
 // SPDX-License-Identifier: MIT
 
 // File contracts/access/Ownable.sol
-
-// Original license: SPDX_License_Identifier: MIT
 
 pragma solidity 0.8.19;
 
@@ -25,11 +21,6 @@ contract Ownable {
     owner = newOwner;
   }
 }
-
-
-// File contracts/core/Settings.sol
-
-// Original license: SPDX_License_Identifier: MIT
 
 pragma solidity 0.8.19;
 
@@ -62,12 +53,6 @@ contract Settings is Ownable {
   }
 
 }
-
-
-// File contracts/interfaces/IERC20.sol
-
-// Original license: SPDX_License_Identifier: MIT
-// OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/IERC20.sol)
 
 pragma solidity 0.8.19;
 
@@ -146,13 +131,7 @@ interface IERC20 {
     function transferFrom(address from, address to, uint256 value) external returns (bool);
 }
 
-
-// File contracts/core/TokenImplementer.sol
-
-// Original license: SPDX_License_Identifier: MIT
-
 pragma solidity 0.8.19;
-
 
 contract TokenImplementer is Settings {
 
@@ -184,11 +163,6 @@ contract TokenImplementer is Settings {
   }
 
 }
-
-
-// File contracts/P2PLending.sol
-
-// Original license: SPDX_License_Identifier: MIT
 
 pragma solidity 0.8.19;
 

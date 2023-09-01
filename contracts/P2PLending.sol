@@ -27,15 +27,98 @@ contract P2PLending is TokenImplementer {
     uint256 loanRepaid;
   }
 
+  struct Credit {
+    uint256 amount;
+    uint256 repaidAmount;
+    uint256 startedAt;
+    uint256 endsAt;
+    uint256 interestRate;
+    uint256 collateralRate;
+    address depositor;
+    bool isActive;
+  }
+
   // Array of depositors
   mapping(address => Depositor) public depositors;
   mapping(address => CreditOptions[]) public creditOptions;
   mapping(address => Borrower) public borrowers;
+  mapping(address => Credit[]) public credits;
 
   modifier onlyDepositor() {
     require(depositors[msg.sender].amount > 0, "Not a depositor");
     _;
   }
+
+  modifier onlyBorrower() {
+    require(borrowers[msg.sender].collateralAmount > 0, "Not a borrower");
+    _;
+  }
+
+  modifier onlyValidCreditOption(address _depositor, uint256 index) {
+    require(creditOptions[_depositor][index].isActive, "Credit option is not active");
+    _;
+  }
+
+  function _getAvailableCollateral(address _borrower) internal view returns (uint256) {
+    return borrowers[_borrower].availableCollateralAmount; 
+  }
+
+  function _getRequiredCollateral(
+    address _depositor, 
+    uint256 _index, 
+    uint256 _loanAmount
+    ) internal view returns (uint256) {
+      return (creditOptions[_depositor][_index].collateralRate * _loanAmount) / DECIMAL;
+  }
+
+  function borrowMoney(
+    address _depositor,
+    uint256 _index,
+    uint256 _amount,
+    uint256 _duration
+  ) public onlyBorrower onlyValidCreditOption(_depositor, _index) {
+
+    uint256 requiredCollateral = _getRequiredCollateral(_depositor, _index, _amount);
+
+    // Check if the borrower has enough collateral
+    require(
+      _getAvailableCollateral(msg.sender) >= requiredCollateral,
+      "Collateral is too low"
+    );
+
+    // Check if requested amount is within the range of the credit option
+    require(
+      creditOptions[_depositor][_index].maxAmount >= _amount && 
+      creditOptions[_depositor][_index].minAmount <= _amount,
+      "Amount is too high or too low"
+    );
+
+    // Check if the depositor has enough available amount
+    require(
+      depositors[_depositor].availableAmount >= _amount,
+      "Amount is too high"
+    );
+
+    // Check if the duration is within the range of the credit option
+    require(
+      creditOptions[_depositor][_index].maxDuration >= _duration,
+      "Duration is too high"
+    );
+
+
+    credits[msg.sender].push(Credit(
+      _amount,
+      0,
+      block.timestamp,
+      block.timestamp + _duration,
+      creditOptions[_depositor][_index].interestRate,
+      creditOptions[_depositor][_index].collateralRate,
+      _depositor,
+      true
+    ));
+    
+  }
+
 
   /**
    * @dev Function to deposit tokens into the contract
@@ -56,6 +139,11 @@ contract P2PLending is TokenImplementer {
     depositors[msg.sender].availableAmount += _amount;
   }
 
+  /**
+   * @dev Function to withdraw tokens from the contract
+   * 
+   * @param amount The amount of tokens to withdraw
+   */
   function withdrawMoney(uint256 amount) public onlyDepositor {
     require(depositors[msg.sender].availableAmount >= amount, "Amount is too high");
     depositors[msg.sender].availableAmount -= amount;
@@ -63,6 +151,15 @@ contract P2PLending is TokenImplementer {
     token.transfer(msg.sender, amount);
   }
 
+  /**
+   * Function to create credit options by a depositor
+   * 
+   * @param _maxAmount max amount of the loan
+   * @param _minAmount min amount of the loan
+   * @param _interestRate interest rate of the loan
+   * @param _maxDuration max duration of the loan
+   * @param _collateralRate collateral rate of the loan
+   */
   function addCreditOption(
     uint256 _maxAmount,
     uint256 _minAmount,
@@ -82,11 +179,21 @@ contract P2PLending is TokenImplementer {
     );
   }
  
+  /**
+   * Adjust credit option by a depositor to make it active or inactive
+   * 
+   * @param index index of the credit option
+   * @param isActive boolean to make the credit option active or inactive
+   */
   function adjustCreditOption(uint256 index, bool isActive) public onlyDepositor {
     creditOptions[msg.sender][index].isActive = isActive;
   }
 
-
+  /**
+   * @dev Function to get the minimum allowed deposit
+   * 
+   * @param _amount The amount of tokens to deposit
+   */
   function depositCollateral(
     uint256 _amount
   ) public {
@@ -101,6 +208,11 @@ contract P2PLending is TokenImplementer {
     borrowers[msg.sender].availableCollateralAmount += _amount;
   }
 
+  /**
+   * @dev Function to withdraw collateral tokens from the contract
+   * 
+   * @param amount The amount of tokens to withdraw
+   */
   function withdrawCollateral(uint256 amount) public {
     require(borrowers[msg.sender].availableCollateralAmount >= amount, "Amount is too high");
     borrowers[msg.sender].availableCollateralAmount -= amount;
